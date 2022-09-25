@@ -26,8 +26,7 @@ func init() {
 }
 
 func Version() (version ApiResponse, err error) {
-	ctx := context.Background()
-	version, err = invokeApi("version", nil, nil, nil, nil, ctx)
+	version, err = invokeApi("version", nil, nil, nil, nil, context.Background())
 	if err != nil {
 		return
 	}
@@ -36,8 +35,7 @@ func Version() (version ApiResponse, err error) {
 
 func Sub(topic string) (subChan chan []byte, err error) {
 
-	encoder, _ := mbase.EncoderByName("base64url")
-	topic = encoder.Encode([]byte(topic))
+	topic = base64urlEncode([]byte(topic))
 
 	args := url.Values{
 		"arg": []string{topic},
@@ -58,14 +56,11 @@ func Sub(topic string) (subChan chan []byte, err error) {
 
 func Pub(topic string, content string) (pub ApiResponse, err error) {
 
-	encoder, _ := mbase.EncoderByName("base64url")
-	topic = encoder.Encode([]byte(topic))
+	topic = base64urlEncode([]byte(topic))
 
 	args := url.Values{
 		"arg": []string{topic},
 	}
-
-	ctx := context.Background()
 
 	// 实例化multipart
 	body := &bytes.Buffer{}
@@ -93,7 +88,7 @@ func Pub(topic string, content string) (pub ApiResponse, err error) {
 
 	header.Add("Content-Type", writer.FormDataContentType())
 
-	pub, err = invokeApi("pubsub/pub", args, header, body, nil, ctx)
+	pub, err = invokeApi("pubsub/pub", args, header, body, nil, context.Background())
 	if err != nil {
 		return
 	}
@@ -101,8 +96,7 @@ func Pub(topic string, content string) (pub ApiResponse, err error) {
 }
 
 func SubLs() (ls ApiResponse, err error) {
-	ctx := context.Background()
-	ls, err = invokeApi("pubsub/ls", nil, nil, nil, nil, ctx)
+	ls, err = invokeApi("pubsub/ls", nil, nil, nil, nil, context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -119,9 +113,7 @@ func SubPeers(topic string) (peers ApiResponse, err error) {
 		"arg": []string{topic},
 	}
 
-	ctx := context.Background()
-
-	peers, err = invokeApi("pubsub/peers", args, nil, nil, nil, ctx)
+	peers, err = invokeApi("pubsub/peers", args, nil, nil, nil, context.Background())
 	if err != nil {
 		return
 	}
@@ -178,4 +170,13 @@ ReadLoop:
 	fmt.Println("respBody:", string(respBody), err)
 	return
 
+}
+
+func base64urlEncode(data []byte) string {
+	encoder, _ := mbase.EncoderByName("base64url")
+	return encoder.Encode(data)
+}
+func base64urlDecode(data string) []byte {
+	_, result, _ := mbase.Decode(data)
+	return result
 }
