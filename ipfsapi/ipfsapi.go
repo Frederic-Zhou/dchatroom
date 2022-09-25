@@ -33,7 +33,7 @@ func Version() (version ApiResponse, err error) {
 	return
 }
 
-func Sub(topic string) (subChan chan []byte, err error) {
+func Sub(ctx context.Context, topic string) (subChan chan []byte, err error) {
 
 	topic = base64urlEncode([]byte(topic))
 
@@ -42,7 +42,6 @@ func Sub(topic string) (subChan chan []byte, err error) {
 	}
 
 	subChan = make(chan []byte, 10)
-	ctx := context.Background()
 
 	go func(c chan []byte, ctx context.Context) {
 		_, err = invokeApi("pubsub/sub", args, nil, nil, c, ctx)
@@ -89,9 +88,7 @@ func Pub(topic string, content string) (pub ApiResponse, err error) {
 	header.Add("Content-Type", writer.FormDataContentType())
 
 	pub, err = invokeApi("pubsub/pub", args, header, body, nil, context.Background())
-	if err != nil {
-		return
-	}
+
 	return
 }
 
@@ -123,7 +120,7 @@ func SubPeers(topic string) (peers ApiResponse, err error) {
 
 func invokeApi(path string, args url.Values, header http.Header, body io.Reader, c chan []byte, ctx context.Context) (apiResponse ApiResponse, err error) {
 
-	fmt.Println("api:", fmt.Sprintf("%s%s?%s", BaseUrl, path, args.Encode()))
+	// fmt.Println("api:", fmt.Sprintf("%s%s?%s", BaseUrl, path, args.Encode()))
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s?%s", BaseUrl, path, args.Encode()), body)
 	if err != nil {
@@ -135,24 +132,27 @@ func invokeApi(path string, args url.Values, header http.Header, body io.Reader,
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("request err:", err)
+		// fmt.Println("request err:", err)
 		return
 	}
+	defer resp.Body.Close()
 
 	reader := bufio.NewReader(resp.Body)
 	respBody := []byte{}
 
 ReadLoop:
 	for {
+		fmt.Println("for...")
 		select {
 		case <-ctx.Done():
+			fmt.Println("ctx Done")
 			break ReadLoop
 		default:
 			line, err := reader.ReadBytes('\n')
 			if err != nil {
 				break ReadLoop
 			}
-
+			fmt.Println("working:", string(line))
 			if c != nil {
 				c <- line
 			} else {
@@ -163,11 +163,11 @@ ReadLoop:
 
 	if len(respBody) > 0 {
 		err = json.Unmarshal(respBody, &apiResponse)
-		if err != nil {
-			fmt.Println("jsonUnmarshal error:", err)
-		}
+		// if err != nil {
+		// 	fmt.Println("jsonUnmarshal error:", err)
+		// }
 	}
-	fmt.Println("respBody:", string(respBody), err)
+	// fmt.Println("respBody:", string(respBody), err)
 	return
 
 }
