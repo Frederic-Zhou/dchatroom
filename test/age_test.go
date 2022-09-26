@@ -13,14 +13,14 @@ import (
 var out bytes.Buffer
 
 func TestEncrypto(t *testing.T) {
-	// publicKey := "age106wz8r7gm9glr2lza8tf82zzk5cdnxg37zjty9hnp5dlh5ghpp7saz7kxu"
-	// recipient, err := age.ParseX25519Recipient(publicKey)
-	// if err != nil {
-	// 	log.Fatalf("Failed to parse public key %q: %v", publicKey, err)
-	// }
+	publicKey := "age106wz8r7gm9glr2lza8tf82zzk5cdnxg37zjty9hnp5dlh5ghpp7saz7kxu"
+	recipient, err := age.ParseX25519Recipient(publicKey)
+	if err != nil {
+		log.Fatalf("Failed to parse public key %q: %v", publicKey, err)
+	}
 
-	recipient, err := age.NewScryptRecipient("123")
-	fmt.Println("err:", err)
+	// recipient, err := age.NewScryptRecipient("123")
+	// fmt.Println("err:", err)
 
 	w, err := age.Encrypt(&out, recipient)
 	if err != nil {

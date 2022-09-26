@@ -35,7 +35,7 @@ func Version() (version ApiResponse, err error) {
 
 func Sub(ctx context.Context, topic string) (subChan chan []byte, err error) {
 
-	topic = base64urlEncode([]byte(topic))
+	topic = Base64urlEncode([]byte(topic))
 
 	args := url.Values{
 		"arg": []string{topic},
@@ -55,7 +55,7 @@ func Sub(ctx context.Context, topic string) (subChan chan []byte, err error) {
 
 func Pub(topic string, content string) (pub ApiResponse, err error) {
 
-	topic = base64urlEncode([]byte(topic))
+	topic = Base64urlEncode([]byte(topic))
 
 	args := url.Values{
 		"arg": []string{topic},
@@ -95,7 +95,7 @@ func Pub(topic string, content string) (pub ApiResponse, err error) {
 func SubLs() (ls ApiResponse, err error) {
 	ls, err = invokeApi("pubsub/ls", nil, nil, nil, nil, context.Background())
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		return
 	}
 
@@ -146,12 +146,12 @@ func invokeApi(path string, args url.Values, header http.Header, body io.Reader,
 	go func(streamChan chan []byte) {
 		for {
 			line, err := reader.ReadBytes('\n')
-			fmt.Println("read line", err)
+			// fmt.Println("read line", err)
 			if err != nil {
 				cancel()
 				return
 			}
-			fmt.Println(string(line))
+			// fmt.Println(string(line))
 			streamChan <- line
 		}
 	}(streamChan)
@@ -172,20 +172,17 @@ ReadLoop:
 
 	if len(respBody) > 0 {
 		err = json.Unmarshal(respBody, &apiResponse)
-		// if err != nil {
-		// 	fmt.Println("jsonUnmarshal error:", err)
-		// }
 	}
-	// fmt.Println("respBody:", string(respBody), err)
+
 	return
 
 }
 
-func base64urlEncode(data []byte) string {
+func Base64urlEncode(data []byte) string {
 	encoder, _ := mbase.EncoderByName("base64url")
 	return encoder.Encode(data)
 }
-func base64urlDecode(data string) []byte {
+func Base64urlDecode(data string) []byte {
 	_, result, _ := mbase.Decode(data)
 	return result
 }

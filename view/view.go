@@ -36,7 +36,7 @@ func init() {
 	infoView.
 		SetDynamicColors(true).
 		SetBorder(false).
-		SetBackgroundColor(tcell.ColorBlack)
+		SetBackgroundColor(tcell.ColorGreenYellow)
 
 	inputText.
 		SetFieldBackgroundColor(tcell.ColorBlack).
@@ -66,7 +66,6 @@ func setEvents() {
 	inputText.SetDoneFunc(func(key tcell.Key) {
 		switch key {
 		case tcell.KeyEnter:
-			//执行命令
 			if enterFunc != nil {
 				enterFunc(inputText.GetText())
 			}
@@ -78,6 +77,14 @@ func setEvents() {
 
 	})
 
+	messageView.SetDoneFunc(func(key tcell.Key) {
+		app.SetFocus(inputText)
+	})
+
+	infoView.SetDoneFunc(func(key tcell.Key) {
+		app.SetFocus(inputText)
+	})
+
 	commandList.SetSelectedFunc(func(text string, index int) {
 		app.SetFocus(inputText)
 		mainFlex.RemoveItem(commandList)
@@ -87,15 +94,26 @@ func setEvents() {
 
 func Run(ef func(text string)) {
 	enterFunc = ef
-	if err := app.SetRoot(mainFlex, true).SetFocus(inputText).Run(); err != nil {
+	if err := app.SetRoot(mainFlex, true).EnableMouse(true).SetFocus(inputText).Run(); err != nil {
 		panic(err)
 	}
 }
 
 func AddMessage(text []byte) {
-	messageView.Write(text)
+
+	go func(txt []byte) {
+		app.QueueUpdateDraw(func() {
+			messageView.Write(append(txt, '\n'))
+			messageView.ScrollToEnd()
+		})
+	}(text)
+
 }
 
 func SetInfoView(info string) {
-	infoView.SetText(info)
+	go func(inf string) {
+		app.QueueUpdateDraw(func() {
+			infoView.SetText(inf)
+		})
+	}(info)
 }
