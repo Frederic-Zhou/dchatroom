@@ -10,7 +10,7 @@ import (
 
 var currentTopic string = ""
 var currentSubChan chan []byte
-var currentSubCtx = context.Background()
+var cancelSub context.CancelFunc
 
 func main() {
 
@@ -45,11 +45,15 @@ func commandHandler(text string) {
 		topic := strings.TrimLeft(text, "/sub")
 		topic = strings.TrimSpace(topic)
 
-		currentSubCtx.Done()
-		currentSubCtx = context.Background()
+		if cancelSub != nil {
+			cancelSub()
+		}
+
+		var ctx context.Context
+		ctx, cancelSub = context.WithCancel(context.Background())
 
 		var err error
-		currentSubChan, err = ipfsapi.Sub(currentSubCtx, topic)
+		currentSubChan, err = ipfsapi.Sub(ctx, topic)
 		if err != nil {
 			view.SetInfoView("[red]sub error:[white]" + err.Error())
 			return

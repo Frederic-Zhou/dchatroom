@@ -140,19 +140,28 @@ func invokeApi(path string, args url.Values, header http.Header, body io.Reader,
 	reader := bufio.NewReader(resp.Body)
 	respBody := []byte{}
 
+	streamChan := make(chan []byte, 10)
+	bodyReadCtx, cancel := context.WithCancel(ctx)
+
+	go func(streamChan chan []byte) {
+		for {
+			line, err := reader.ReadBytes('\n')
+			fmt.Println("read line", err)
+			if err != nil {
+				cancel()
+				return
+			}
+			fmt.Println(string(line))
+			streamChan <- line
+		}
+	}(streamChan)
+
 ReadLoop:
 	for {
-		fmt.Println("for...")
 		select {
-		case <-ctx.Done():
-			fmt.Println("ctx Done")
+		case <-bodyReadCtx.Done():
 			break ReadLoop
-		default:
-			line, err := reader.ReadBytes('\n')
-			if err != nil {
-				break ReadLoop
-			}
-			fmt.Println("working:", string(line))
+		case line := <-streamChan:
 			if c != nil {
 				c <- line
 			} else {
