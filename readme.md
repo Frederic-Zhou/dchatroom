@@ -1,4 +1,6 @@
-# myd is a terminal app that base on IPFS pubsub and age e2e encrypt
+# myd
+
+**myd** is a terminal app that base on IPFS pubsub and age e2e encrypt
 
 ## todo
 
