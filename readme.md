@@ -1,4 +1,4 @@
-# myd 基于IPFS pubsub 的端对端通信工具
+# myd is a terminal app that base on IPFS pubsub and age e2e encrypt
 
 ## todo
 
