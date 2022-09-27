@@ -85,7 +85,7 @@ func commandHandler(text string) {
 			return
 		}
 		currentAKA = aka
-		view.AddMessage([]byte("My name is:" + text))
+		view.AddMessage([]byte("[yellow]My name is:[white]" + currentAKA))
 	default: // default is pub messag to topic
 
 		if currentTopic == "" {
@@ -178,9 +178,12 @@ func infoHandler(ctx context.Context, topic string) {
 			return
 		case <-time.After(5 * time.Second):
 			peers, _ := ipfsapi.SubPeers(topic)
-			peersCount := peers["Strings"].([]interface{})
-
-			view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d", currentTopic, currentAKA, len(peersCount)))
+			peersCount, ok := peers["Strings"].([]interface{})
+			if ok {
+				view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d", currentTopic, currentAKA, len(peersCount)))
+			} else {
+				view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, refresh fail", currentTopic, currentAKA))
+			}
 		}
 	}
 }
