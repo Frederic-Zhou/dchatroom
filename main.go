@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"myd/ipfsapi"
@@ -154,9 +155,12 @@ func messageHandler(ctx context.Context, c chan []byte) {
 				planText = "[red]Decrypt Error:" + err.Error()
 			}
 
+			seqnoBytes := ipfsapi.Base64urlDecode(message.Seqno)
+			seqno := binary.BigEndian.Uint64(seqnoBytes)
+
 			messageText := fmt.Sprintf(
-				"[blue]PeerID:%s [green]Topics:%s\n[orange]%s:[white]%s\n[gray] (r=%d) %s",
-				message.From, strings.Join(topicIDs, ";"), dataObj.AKA, planText, len(recipients), dataObj.Text)
+				"[blue]PeerID:%s [green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (r=%d) %s",
+				message.From, strings.Join(topicIDs, ";"), seqno, dataObj.AKA, planText, len(recipients), dataObj.Text)
 
 			view.AddMessage([]byte(messageText))
 			//通知，有点吵，暂时关闭
