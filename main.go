@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gen2brain/beeep"
 )
 
 var currentTopic string = ""
@@ -43,7 +45,7 @@ func main() {
 }
 
 func commandHandler(text string) {
-
+	toEncrypt := false
 	// view.AddMessage([]byte(currentTopic + "/" + text))
 	switch {
 	case strings.HasPrefix(text, "/sub "):
@@ -75,9 +77,11 @@ func commandHandler(text string) {
 
 		view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%s", currentTopic, currentAKA, "0"))
 		//定时刷新topic信息
-		go infoHandler(ctx, topic)
+		go infoAndHeartBitHandler(ctx, topic)
 		//开goroutin不断获取ipfsapi sub的通道数据
 		go messageHandler(ctx, currentSubChan)
+		//订阅发个heartbit
+		pubHandler("/heartbit", toEncrypt)
 
 	case strings.HasPrefix(text, "/aka "):
 		aka := strings.TrimSpace(strings.TrimPrefix(text, "/aka"))
@@ -85,37 +89,50 @@ func commandHandler(text string) {
 			return
 		}
 		currentAKA = aka
-		view.AddMessage([]byte("[yellow]My name is:[white]" + currentAKA))
-	default: // default is pub messag to topic
+	default:
+		toEncrypt = true
+	}
 
-		if currentTopic == "" {
-			view.SetInfoView("[red]sub a topic first[white]")
-			return
+	//todo: signtrue
+	pubHandler(text, toEncrypt)
+
+}
+
+func pubHandler(text string, toEncrypt bool) {
+	// view.AddMessage([]byte("[red]pub plantext:[white]" + text))
+	var err error
+	if currentTopic == "" {
+		view.SetInfoView("[red]sub a topic first[white]")
+		return
+	}
+
+	if text == "" {
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			view.AddMessage([]byte("[red]pub error:[white]" + err.Error()))
 		}
+	}()
 
-		if text == "" {
-			return
-		}
-
-		text, err := secret.Encrypt(text)
+	if toEncrypt {
+		text, err = secret.Encrypt(text)
 		if err != nil {
 			view.AddMessage([]byte("Encrypt Error:" + err.Error()))
 			return
 		}
-		data, _ := json.Marshal(Data{
-			Text:      text,
-			AKA:       currentAKA,
-			PubKey:    "",
-			Recipient: secret.GetLocalRecipient(),
-		})
-
-		//todo: signtrue
-		_, err = ipfsapi.Pub(currentTopic, string(data))
-		if err != nil {
-			view.SetInfoView("[red]error:[white]" + err.Error())
-		}
 	}
 
+	data, _ := json.Marshal(Data{
+		Text:      text,
+		AKA:       currentAKA,
+		PubKey:    secret.GetLocalPubKey(),
+		Recipient: secret.GetLocalRecipient(),
+		Encrypted: toEncrypt,
+	})
+
+	_, err = ipfsapi.Pub(currentTopic, string(data))
 }
 
 func messageHandler(ctx context.Context, c chan []byte) {
@@ -128,11 +145,18 @@ func messageHandler(ctx context.Context, c chan []byte) {
 
 			// view.AddMessage(line)
 			message := Message{}
-
 			if err := json.Unmarshal(line, &message); err != nil {
 				view.AddMessage([]byte("json1:" + err.Error()))
 				return
 			}
+
+			topicIDs := []string{}
+			for _, t := range message.TopicIDs {
+				topicIDs = append(topicIDs, string(ipfsapi.Base64urlDecode(t)))
+			}
+			seqnoBytes := ipfsapi.Base64urlDecode(message.Seqno)
+			seqno := binary.BigEndian.Uint64(seqnoBytes)
+
 			data := ipfsapi.Base64urlDecode(message.Data)
 			dataObj := Data{}
 
@@ -141,42 +165,45 @@ func messageHandler(ctx context.Context, c chan []byte) {
 				return
 			}
 
-			recipients := secret.AddRemoteRecipient(dataObj.Recipient)
-
-			topicIDs := []string{}
-			for _, t := range message.TopicIDs {
-				topicIDs = append(topicIDs, string(ipfsapi.Base64urlDecode(t)))
-			}
-
+			recipientsCount := secret.RecipientsCount()
 			//todo: check signtrue
-
-			planText, err := secret.Decrypt(dataObj.Text)
-			if err != nil {
-				planText = "[red]Decrypt Error:" + err.Error()
+			if dataObj.Encrypted {
+				var err error
+				if dataObj.Text, err = secret.Decrypt(dataObj.Text); err != nil {
+					dataObj.Text = fmt.Sprintf("Decrypt Error:%s\n%s", err.Error(), dataObj.Text)
+				}
 			}
 
-			seqnoBytes := ipfsapi.Base64urlDecode(message.Seqno)
-			seqno := binary.BigEndian.Uint64(seqnoBytes)
-
-			messageText := fmt.Sprintf(
-				"[blue]PeerID:%s [green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (r=%d) %s",
-				message.From, strings.Join(topicIDs, ";"), seqno, dataObj.AKA, planText, len(recipients), dataObj.Text)
-
-			view.AddMessage([]byte(messageText))
-			//通知，有点吵，暂时关闭
-			// _ = beeep.Notify("New Message", planText, "")
+			switch {
+			case strings.HasPrefix(dataObj.Text, "/heartbit"): //收到心跳
+				secret.StoreRemoteRecipient(dataObj.Recipient)
+				//do nothing
+			case strings.HasPrefix(dataObj.Text, "/sub"):
+				pubHandler("/heartbit", false)
+				view.AddMessage([]byte(fmt.Sprintf("[blue]%s\n[orange]%s [white]%s", dataObj.Recipient[4:], dataObj.AKA, dataObj.Text)))
+			default:
+				messageText := fmt.Sprintf(
+					"[blue]Recipient:%s \n[green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (recipients count:%d)",
+					dataObj.Recipient[4:], strings.Join(topicIDs, ";"), seqno, dataObj.AKA, dataObj.Text, recipientsCount)
+				view.AddMessage([]byte(messageText))
+				//通知，有点吵，暂时关闭
+				_ = beeep.Notify(dataObj.AKA, "Say:****", "")
+			}
 
 		}
 	}
 
 }
 
-func infoHandler(ctx context.Context, topic string) {
+func infoAndHeartBitHandler(ctx context.Context, topic string) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(5 * time.Second):
+
+			pubHandler("/heartbit", false)
+
 			peers, _ := ipfsapi.SubPeers(topic)
 			peersCount, ok := peers["Strings"].([]interface{})
 			if ok {
@@ -184,6 +211,7 @@ func infoHandler(ctx context.Context, topic string) {
 			} else {
 				view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, refresh fail", currentTopic, currentAKA))
 			}
+
 		}
 	}
 }
@@ -193,6 +221,7 @@ type Data struct {
 	AKA       string `json:"aka"`
 	PubKey    string `json:"pubkey"`
 	Recipient string `json:"recipient"`
+	Encrypted bool   `json:"encrypted"`
 }
 
 //{"from":"12D3KooWFKQ8jcYyyDo245tFUnSZmMi2yZWmMaHdcUWWGqEYXqSZ","data":"ubmFtZSBwdWJzdWIgdGVzdCAyCg","seqno":"uFxhdm2UVf2Y","topicIDs":["uaGVsbG9kYXduZ3Jw"]}

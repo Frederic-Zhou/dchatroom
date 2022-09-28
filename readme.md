@@ -4,9 +4,10 @@
 
 ## todo
 
-1. auto send and get recipient
+1. ✅ auto send and get recipient
 2. refresh recipients (remove leave peer)
-   - send heartbit to check peer is live?
-   - store recipients localy and broatcast recipient when changed.
+   - ✅ send heartbit to check peer is live?
+     - remove timeout recipient
+   - ~~store recipients localy and broatcast recipient when changed.~~
 3. add signtrue and verify
 4. store history on IPFS or localy?

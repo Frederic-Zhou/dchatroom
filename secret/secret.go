@@ -2,28 +2,59 @@ package secret
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
 	"io"
+	"sync"
+	"time"
 
 	"filippo.io/age"
 )
 
-var id *age.X25519Identity
+var identity *age.X25519Identity
 var recipient *age.X25519Recipient
 var pubkey ed25519.PublicKey
 var prikey ed25519.PrivateKey
-var recipients []string
+var recipientsMap sync.Map
 var pubkeys []ed25519.PublicKey
 
-func init() {
-	id, recipient = genAge()
-	prikey, pubkey = genEd25519()
+type recipientItem struct {
+	LastTime time.Time
+}
 
-	recipients = []string{
-		recipient.String(),
-	}
+func init() {
+	identity, recipient = genAge()
+	prikey, pubkey = genEd25519()
+	startRefreshRecipientsMap()
+
+	recipientsMap.Store(recipient.String(), recipientItem{LastTime: time.Now()})
+
+}
+
+func startRefreshRecipientsMap() {
+
+	ctx := context.Background()
+	go func(ctx context.Context) {
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+				recipientsMap.Range(func(k interface{}, v interface{}) bool {
+					item, ok := v.(recipientItem)
+					if ok && item.LastTime.Add(15*time.Second).Before(time.Now()) {
+						recipientsMap.Delete(k)
+					}
+					return true
+				})
+			}
+		}
+
+	}(ctx)
+
 }
 
 func genAge() (identity *age.X25519Identity, recipient *age.X25519Recipient) {
@@ -40,21 +71,27 @@ func GetLocalRecipient() string {
 	return recipient.String()
 }
 
-func GetLocalPubKey() {
-
+func GetLocalPubKey() string {
+	return base64.RawStdEncoding.EncodeToString(pubkey)
 }
 
-func AddRemoteRecipient(recipientStr string) []string {
+func StoreRemoteRecipient(recipientStr string) {
+	recipientsMap.Store(recipientStr, recipientItem{
+		LastTime: time.Now(),
+	})
+}
 
-	// recipient, err := age.ParseX25519Recipient(recipientStr)
-	for _, v := range recipients {
-		if v == recipientStr {
-			return recipients
-		}
-	}
-	recipients = append(recipients, recipientStr)
-	return recipients
+func DelRemoteRecipient(recipientStr string) {
+	recipientsMap.Delete(recipientStr)
+}
 
+func RecipientsCount() int {
+	count := 0
+	recipientsMap.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
 
 func AddRemotePubKeys(pubkey string) {
@@ -65,12 +102,13 @@ func Encrypt(planText string) (cryptoText string, err error) {
 
 	recs := []age.Recipient{}
 
-	for _, r := range recipients {
-		rec, err := age.ParseX25519Recipient(r)
+	recipientsMap.Range(func(key, value interface{}) bool {
+		rec, err := age.ParseX25519Recipient(key.(string))
 		if err == nil {
 			recs = append(recs, rec)
 		}
-	}
+		return true
+	})
 
 	var dst bytes.Buffer
 
@@ -102,7 +140,7 @@ func Decrypt(cryptoText string) (planText string, err error) {
 		return
 	}
 
-	r, err := age.Decrypt(&dst, id)
+	r, err := age.Decrypt(&dst, identity)
 	if err != nil {
 		return
 	}
