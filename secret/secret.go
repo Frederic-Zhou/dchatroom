@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -22,6 +23,8 @@ var pubkeys []ed25519.PublicKey
 
 type recipientItem struct {
 	LastTime time.Time
+	Accept   bool
+	AKA      string
 }
 
 func init() {
@@ -29,7 +32,7 @@ func init() {
 	prikey, pubkey = genEd25519()
 	startRefreshRecipientsMap()
 
-	recipientsMap.Store(recipient.String(), recipientItem{LastTime: time.Now()})
+	recipientsMap.Store(recipient.String(), recipientItem{LastTime: time.Now(), Accept: true})
 
 }
 
@@ -46,7 +49,8 @@ func startRefreshRecipientsMap() {
 				recipientsMap.Range(func(k interface{}, v interface{}) bool {
 					item, ok := v.(recipientItem)
 					if ok && item.LastTime.Add(15*time.Second).Before(time.Now()) {
-						recipientsMap.Delete(k)
+						item.Accept = false
+						recipientsMap.Store(k, item)
 					}
 					return true
 				})
@@ -75,23 +79,55 @@ func GetLocalPubKey() string {
 	return base64.RawStdEncoding.EncodeToString(pubkey)
 }
 
-func StoreRemoteRecipient(recipientStr string) {
-	recipientsMap.Store(recipientStr, recipientItem{
+func StoreRemoteRecipient(recipientStr string, accept bool, aka string) {
+
+	item, ok := recipientsMap.LoadOrStore(recipientStr, recipientItem{
 		LastTime: time.Now(),
+		Accept:   accept,
+		AKA:      aka,
 	})
+
+	if ok { //存在，更新时间
+		if i, o := item.(recipientItem); o {
+			i.LastTime = time.Now()
+			i.AKA = aka
+			recipientsMap.Store(recipientStr, i)
+		}
+	}
+
+}
+
+func AcceptRemoteRecipient(recipientStr string, accept bool, aka string) {
+
+	item, ok := recipientsMap.LoadOrStore(recipientStr, recipientItem{
+		LastTime: time.Now(),
+		Accept:   accept,
+		AKA:      aka,
+	})
+
+	if ok { //存在，更新Accept
+		if i, o := item.(recipientItem); o {
+			i.Accept = accept
+			i.AKA = aka
+			recipientsMap.Store(recipientStr, i)
+		}
+	}
 }
 
 func DelRemoteRecipient(recipientStr string) {
 	recipientsMap.Delete(recipientStr)
 }
 
-func RecipientsCount() int {
-	count := 0
+func GetRecipients() (recs [][]string) {
+
 	recipientsMap.Range(func(key, value interface{}) bool {
-		count++
+		item, ok := value.(recipientItem)
+		if ok {
+			recs = append(recs, []string{key.(string), item.AKA, item.LastTime.String(), fmt.Sprintf("%t", item.Accept)})
+		}
 		return true
 	})
-	return count
+	return
 }
 
 func AddRemotePubKeys(pubkey string) {

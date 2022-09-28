@@ -11,6 +11,7 @@ var messageView *tview.TextView
 var infoView *tview.TextView
 var commandList *tview.DropDown
 var app *tview.Application
+var recipientsList *tview.List
 
 var commandValues, commandNames []string
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"myd/ipfsapi"
 	"myd/secret"
@@ -19,6 +20,7 @@ var currentTopic string = ""
 var currentSubChan chan []byte
 var cancelSub context.CancelFunc
 var currentAKA, _ = os.Hostname()
+var autoAccept *bool
 
 func main() {
 
@@ -31,6 +33,9 @@ func main() {
 	// for line := range c {
 	// 	fmt.Print(string(line))
 	// }
+
+	autoAccept = flag.Bool("a", true, "auto accept, Default: true")
+	flag.Parse()
 
 	_, err := ipfsapi.Version()
 	if err != nil {
@@ -165,7 +170,7 @@ func messageHandler(ctx context.Context, c chan []byte) {
 				return
 			}
 
-			recipientsCount := secret.RecipientsCount()
+			recs := secret.GetRecipients()
 			//todo: check signtrue
 			if dataObj.Encrypted {
 				var err error
@@ -176,15 +181,15 @@ func messageHandler(ctx context.Context, c chan []byte) {
 
 			switch {
 			case strings.HasPrefix(dataObj.Text, "/heartbit"): //收到心跳
-				secret.StoreRemoteRecipient(dataObj.Recipient)
+				secret.StoreRemoteRecipient(dataObj.Recipient, *autoAccept, dataObj.AKA)
 				//do nothing
 			case strings.HasPrefix(dataObj.Text, "/sub"):
 				pubHandler("/heartbit", false)
 				view.AddMessage([]byte(fmt.Sprintf("[blue]%s\n[orange]%s [white]%s", dataObj.Recipient[4:], dataObj.AKA, dataObj.Text)))
 			default:
 				messageText := fmt.Sprintf(
-					"[blue]Recipient:%s \n[green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (recipients count:%d)",
-					dataObj.Recipient[4:], strings.Join(topicIDs, ";"), seqno, dataObj.AKA, dataObj.Text, recipientsCount)
+					"[blue]Recipient:%s \n[green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (recipients:%+v)",
+					dataObj.Recipient[4:], strings.Join(topicIDs, ";"), seqno, dataObj.AKA, dataObj.Text, recs)
 				view.AddMessage([]byte(messageText))
 				//通知，有点吵，暂时关闭
 				_ = beeep.Notify(dataObj.AKA, "Say:****", "")
@@ -204,13 +209,12 @@ func infoAndHeartBitHandler(ctx context.Context, topic string) {
 
 			pubHandler("/heartbit", false)
 
-			peers, _ := ipfsapi.SubPeers(topic)
-			peersCount, ok := peers["Strings"].([]interface{})
-			if ok {
-				view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d", currentTopic, currentAKA, len(peersCount)))
-			} else {
-				view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, refresh fail", currentTopic, currentAKA))
+			peers, err := ipfsapi.SubPeers(topic)
+			if err != nil {
+				continue
 			}
+			peersCount, ok := peers["Strings"].([]interface{})
+			view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d, ok?:%t", currentTopic, currentAKA, len(peersCount), ok))
 
 		}
 	}
