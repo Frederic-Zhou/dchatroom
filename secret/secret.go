@@ -97,18 +97,16 @@ func StoreRemoteRecipient(recipientStr string, accept bool, aka string) {
 
 }
 
-func AcceptRemoteRecipient(recipientStr string, accept bool, aka string) {
+func AcceptRemoteRecipient(recipientStr string, accept bool) {
 
 	item, ok := recipientsMap.LoadOrStore(recipientStr, recipientItem{
 		LastTime: time.Now(),
 		Accept:   accept,
-		AKA:      aka,
 	})
 
 	if ok { //存在，更新Accept
 		if i, o := item.(recipientItem); o {
 			i.Accept = accept
-			i.AKA = aka
 			recipientsMap.Store(recipientStr, i)
 		}
 	}
@@ -118,12 +116,12 @@ func DelRemoteRecipient(recipientStr string) {
 	recipientsMap.Delete(recipientStr)
 }
 
-func GetRecipients() (recs [][]string) {
+func GetRecipients() (recs []string) {
 
 	recipientsMap.Range(func(key, value interface{}) bool {
 		item, ok := value.(recipientItem)
 		if ok {
-			recs = append(recs, []string{key.(string), item.AKA, item.LastTime.String(), fmt.Sprintf("%t", item.Accept)})
+			recs = append(recs, fmt.Sprintf("%s: %v,%s", key.(string), item.Accept, item.AKA))
 		}
 		return true
 	})
@@ -140,7 +138,7 @@ func Encrypt(planText string) (cryptoText string, err error) {
 
 	recipientsMap.Range(func(key, value interface{}) bool {
 		rec, err := age.ParseX25519Recipient(key.(string))
-		if err == nil {
+		if err == nil && value.(recipientItem).Accept {
 			recs = append(recs, rec)
 		}
 		return true

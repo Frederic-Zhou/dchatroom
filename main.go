@@ -50,12 +50,12 @@ func main() {
 }
 
 func commandHandler(text string) {
-	toEncrypt := false
+
 	// view.AddMessage([]byte(currentTopic + "/" + text))
 	switch {
 	case strings.HasPrefix(text, "/sub "):
 		//取得订阅的Topic，去掉前后的空白
-		topic := strings.TrimSpace(strings.TrimPrefix(text, "/sub"))
+		topic := strings.TrimSpace(strings.TrimPrefix(text, "/sub "))
 		if topic == "" {
 			return
 		}
@@ -86,20 +86,31 @@ func commandHandler(text string) {
 		//开goroutin不断获取ipfsapi sub的通道数据
 		go messageHandler(ctx, currentSubChan)
 		//订阅发个heartbit
-		pubHandler("/heartbit", toEncrypt)
+		pubHandler("/heartbit", false)
+		pubHandler(text, false)
 
 	case strings.HasPrefix(text, "/aka "):
-		aka := strings.TrimSpace(strings.TrimPrefix(text, "/aka"))
+		aka := strings.TrimSpace(strings.TrimPrefix(text, "/aka "))
 		if aka == "" {
 			return
 		}
 		currentAKA = aka
+		pubHandler(text, false)
+	case strings.HasPrefix(text, "/accept "):
+		accept := strings.TrimSpace(strings.TrimPrefix(text, "/accept "))
+		if accept == "" {
+			return
+		}
+		secret.AcceptRemoteRecipient(accept, true)
+	case strings.HasPrefix(text, "/reject "):
+		reject := strings.TrimSpace(strings.TrimPrefix(text, "/reject "))
+		if reject == "" {
+			return
+		}
+		secret.AcceptRemoteRecipient(reject, false)
 	default:
-		toEncrypt = true
+		pubHandler(text, true)
 	}
-
-	//todo: signtrue
-	pubHandler(text, toEncrypt)
 
 }
 
@@ -170,7 +181,7 @@ func messageHandler(ctx context.Context, c chan []byte) {
 				return
 			}
 
-			recs := secret.GetRecipients()
+			// recs := secret.GetRecipients()
 			//todo: check signtrue
 			if dataObj.Encrypted {
 				var err error
@@ -185,11 +196,11 @@ func messageHandler(ctx context.Context, c chan []byte) {
 				//do nothing
 			case strings.HasPrefix(dataObj.Text, "/sub"):
 				pubHandler("/heartbit", false)
-				view.AddMessage([]byte(fmt.Sprintf("[blue]%s\n[orange]%s [white]%s", dataObj.Recipient[4:], dataObj.AKA, dataObj.Text)))
+				view.AddMessage([]byte(fmt.Sprintf("[blue]%s\n[orange]%s [white]%s", dataObj.Recipient, dataObj.AKA, dataObj.Text)))
 			default:
 				messageText := fmt.Sprintf(
-					"[blue]Recipient:%s \n[green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s\n[gray] (recipients:%+v)",
-					dataObj.Recipient[4:], strings.Join(topicIDs, ";"), seqno, dataObj.AKA, dataObj.Text, recs)
+					"[blue]Recipient:%s \n[green]Topics:%s [yellow]Seqno:%d\n[orange]%s:[white]%s",
+					dataObj.Recipient, strings.Join(topicIDs, ";"), seqno, dataObj.AKA, dataObj.Text)
 				view.AddMessage([]byte(messageText))
 				//通知，有点吵，暂时关闭
 				_ = beeep.Notify(dataObj.AKA, "Say:****", "")
@@ -216,6 +227,9 @@ func infoAndHeartBitHandler(ctx context.Context, topic string) {
 			peersCount, ok := peers["Strings"].([]interface{})
 			view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d, ok?:%t", currentTopic, currentAKA, len(peersCount), ok))
 
+			recs := secret.GetRecipients()
+
+			view.SetRecipientListOptions(recs)
 		}
 	}
 }

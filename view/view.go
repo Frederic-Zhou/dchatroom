@@ -1,6 +1,8 @@
 package view
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -11,7 +13,7 @@ var messageView *tview.TextView
 var infoView *tview.TextView
 var commandList *tview.DropDown
 var app *tview.Application
-var recipientsList *tview.List
+var recipientsList *tview.DropDown
 
 var commandValues, commandNames []string
 
@@ -19,8 +21,8 @@ var enterFunc func(text string)
 
 func init() {
 
-	commandValues = []string{"", "/sub ", "/aka "}
-	commandNames = []string{"Back to Pub to current topic", "/sub: Sub a topic", "/aka: Set AKA"}
+	commandValues = []string{"", "/sub ", "/aka ", "/accept ", "/reject "}
+	commandNames = []string{"Back to input", "/sub: Sub a topic", "/aka: Set AKA", "/accept: accept recipient", "/reject: reject recipient"}
 
 	app = tview.NewApplication()
 	mainFlex = tview.NewFlex()
@@ -28,6 +30,7 @@ func init() {
 	messageView = tview.NewTextView()
 	infoView = tview.NewTextView()
 	commandList = tview.NewDropDown()
+	recipientsList = tview.NewDropDown()
 
 	messageView.
 		SetDynamicColors(true).
@@ -47,6 +50,10 @@ func init() {
 		SetOptions(commandNames, nil).
 		SetBackgroundColor(tcell.ColorBlanchedAlmond)
 
+	recipientsList.
+		SetOptions([]string{"Empty"}, nil).
+		SetBackgroundColor(tcell.ColorBlanchedAlmond)
+
 	mainFlex.SetDirection(tview.FlexRow).
 		AddItem(infoView, 1, 0, false).
 		AddItem(messageView, 0, 1, false).
@@ -61,6 +68,10 @@ func setEvents() {
 		if text == "/" {
 			mainFlex.AddItem(commandList, 1, 0, false)
 			app.SetFocus(commandList)
+		}
+		if text == "/reject " || text == "/accept " {
+			mainFlex.AddItem(recipientsList, 1, 0, false)
+			app.SetFocus(recipientsList)
 		}
 	})
 
@@ -91,6 +102,12 @@ func setEvents() {
 		mainFlex.RemoveItem(commandList)
 		inputText.SetText(commandValues[index])
 	})
+
+	recipientsList.SetSelectedFunc(func(text string, index int) {
+		app.SetFocus(inputText)
+		mainFlex.RemoveItem(recipientsList)
+		inputText.SetText(text)
+	})
 }
 
 func Run(ef func(text string)) {
@@ -117,4 +134,27 @@ func SetInfoView(info string) {
 			infoView.SetText(inf)
 		})
 	}(info)
+}
+
+func SetRecipientListOptions(recipients []string) {
+
+	go func(recs []string) {
+		app.QueueUpdateDraw(func() {
+
+			recs = append([]string{"Back to input"}, recs...)
+
+			recipientsList.SetOptions(recs, nil).
+				SetSelectedFunc(func(text string, index int) {
+					app.SetFocus(inputText)
+					mainFlex.RemoveItem(recipientsList)
+
+					if index == 0 {
+						inputText.SetText("")
+						return
+					}
+
+					inputText.SetText(inputText.GetText() + strings.Split(text, ":")[0])
+				})
+		})
+	}(recipients)
 }
