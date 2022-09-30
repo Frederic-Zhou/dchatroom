@@ -21,7 +21,6 @@ type ApiResponse map[string]interface{}
 
 func init() {
 	port := flag.Int("p", 5001, "ipfs port number, Default: 5001")
-	flag.Parse()
 	BaseUrl = fmt.Sprintf("http://127.0.0.1:%d/api/v0/", *port)
 }
 

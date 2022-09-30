@@ -51,7 +51,7 @@ func init() {
 		SetBackgroundColor(tcell.ColorBlanchedAlmond)
 
 	recipientsList.
-		SetOptions([]string{"Empty"}, nil).
+		SetOptions([]string{""}, nil).
 		SetBackgroundColor(tcell.ColorBlanchedAlmond)
 
 	mainFlex.SetDirection(tview.FlexRow).

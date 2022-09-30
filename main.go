@@ -22,8 +22,12 @@ var cancelSub context.CancelFunc
 var currentAKA, _ = os.Hostname()
 var autoAccept *bool
 
-func main() {
+func init() {
+	autoAccept = flag.Bool("a", true, "auto accept, Default: true")
+}
 
+func main() {
+	flag.Parse()
 	// ipfsapi.Version()
 
 	// ipfsapi.SubLs()
@@ -33,9 +37,6 @@ func main() {
 	// for line := range c {
 	// 	fmt.Print(string(line))
 	// }
-
-	autoAccept = flag.Bool("a", true, "auto accept, Default: true")
-	flag.Parse()
 
 	_, err := ipfsapi.Version()
 	if err != nil {
@@ -85,8 +86,6 @@ func commandHandler(text string) {
 		go infoAndHeartBitHandler(ctx, topic)
 		//开goroutin不断获取ipfsapi sub的通道数据
 		go messageHandler(ctx, currentSubChan)
-		//订阅发个heartbit
-		pubHandler("/heartbit", false)
 		pubHandler(text, false)
 
 	case strings.HasPrefix(text, "/aka "):

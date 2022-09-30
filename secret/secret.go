@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 	"time"
 
@@ -49,8 +50,7 @@ func startRefreshRecipientsMap() {
 				recipientsMap.Range(func(k interface{}, v interface{}) bool {
 					item, ok := v.(recipientItem)
 					if ok && item.LastTime.Add(15*time.Second).Before(time.Now()) {
-						item.Accept = false
-						recipientsMap.Store(k, item)
+						recipientsMap.Delete(k)
 					}
 					return true
 				})
@@ -125,6 +125,9 @@ func GetRecipients() (recs []string) {
 		}
 		return true
 	})
+
+	sort.Strings(recs)
+
 	return
 }
 
