@@ -1,0 +1,51 @@
+{
+    "clock": {
+        "id": "0417d8f84611c1fab809783f211fef80bcf6b20d4c2e970b8e8920c53dd8f2737ccba0bcdf61fafb09239f52a3f95cb376ad4a95166fba48fc6fd7790721869e0c",
+        "time": 66
+    },
+    "hash": null,
+    "id": "/orbitdb/zdpuAoTKP7DhmCRH8CrcjfzzUR3F3YsiSvurHWPHKT4MaFdNE/helloworld",
+    "identity": {
+        "id": "032858088cdce1c92c7e730487a6e1b2e8328e9ae35695ec495946717e30f28f60",
+        "publicKey": "0417d8f84611c1fab809783f211fef80bcf6b20d4c2e970b8e8920c53dd8f2737ccba0bcdf61fafb09239f52a3f95cb376ad4a95166fba48fc6fd7790721869e0c",
+        "signatures": {
+            "id": "3044022007e328183c5f143cc579698e6026281777b8459c0febbaff026963b4a0f5a3dc0220514487a09ae4c4cb6c951e746a5942a1939b8dd7a3d6dc393a71ee082dbcdde8",
+            "publicKey": "30440220275140befa97bfaf20537b51520be5669915c2930aebf16e761483a7f82ad3da022054d5f364e57a92d9290aba91d410bb6f061873de3a3788d26af8ed730512462f"
+        },
+        "type": "orbitdb"
+    },
+    "key": "0417d8f84611c1fab809783f211fef80bcf6b20d4c2e970b8e8920c53dd8f2737ccba0bcdf61fafb09239f52a3f95cb376ad4a95166fba48fc6fd7790721869e0c",
+    "next": [
+        {
+            "/": "bafyreidcqfyj5ntplhk2tkeaobluxbz3zd6e37ym5b3hmsc6b2viddszoy"
+        }
+    ],
+    "payload": {
+        "key": null,
+        "op": "ADD",
+        "value": {
+            "AKA": "",
+            "id": "12D3KooWFKQ8jcYyyDo245tFUnSZmMi2yZWmMaHdcUWWGqEYXqSZ",
+            "txt": "aaa"
+        }
+    },
+    "refs": [
+        {
+            "/": "bafyreib7ucltw4q6drvr66f5s75wq6256noalfgzqlba3m75oagozblayu"
+        },
+        {
+            "/": "bafyreierpatuipqzbld4acg3azagmjkqaza4wqt5qzzwz26ce7twkobgyi"
+        },
+        {
+            "/": "bafyreifm4r2y7qvcus4phxayfkr4lbrk37apzttgdbkxhvhvs7o2z5zlpy"
+        },
+        {
+            "/": "bafyreibqzxaqecfkpiec4x54jyusjc2hebtmi7wxbss7ie6cxwifxzqlwm"
+        },
+        {
+            "/": "bafyreidaomnhmxo3rjiid3hcidfhbun36yxqh4epxuwcl7lo7ggixp5zmq"
+        }
+    ],
+    "sig": "3045022100bc591e6bb450228dd61f5ff7443278736cb92adbcc919851fce4756286c8de28022002b43e2564ee307997301c3da90d958b19320353586938119ed9268d1d7eaec4",
+    "v": 2
+}

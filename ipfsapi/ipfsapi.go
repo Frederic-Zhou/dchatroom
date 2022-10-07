@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -12,12 +11,16 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
 	mbase "github.com/multiformats/go-multibase"
 )
 
 var BaseUrl string
 
-type ApiResponse map[string]interface{}
+// type ApiResponse map[string]interface{}
+type ApiResponse datamodel.Node
 
 func init() {
 	port := flag.Int("p", 5001, "ipfs port number, Default: 5001")
@@ -117,6 +120,39 @@ func SubPeers(topic string) (peers ApiResponse, err error) {
 	return
 }
 
+func DagPut(content string) (putResult ApiResponse, err error) {
+
+	// 实例化multipart
+	body := &bytes.Buffer{}
+	header := http.Header{}
+
+	//refer:https://blog.csdn.net/huobo123/article/details/104288030
+	//=========================================================
+	writer := multipart.NewWriter(body)
+
+	// 创建multipart 文件字段
+	part, err := writer.CreateFormField("file")
+	if err != nil {
+		return nil, err
+	}
+	// 写入文件数据到multipart，和读取本地文件方法的唯一区别
+	_, err = part.Write([]byte(content))
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	header.Add("Content-Type", writer.FormDataContentType())
+
+	putResult, err = invokeApi("dag/put", nil, header, body, nil, context.Background())
+
+	return
+}
+
 func invokeApi(path string, args url.Values, header http.Header, body io.Reader, c chan []byte, ctx context.Context) (apiResponse ApiResponse, err error) {
 
 	// fmt.Println("api:", fmt.Sprintf("%s%s?%s", BaseUrl, path, args.Encode()))
@@ -170,7 +206,14 @@ ReadLoop:
 	}
 
 	if len(respBody) > 0 {
-		err = json.Unmarshal(respBody, &apiResponse)
+
+		serial := bytes.NewReader(respBody)
+
+		np := basicnode.Prototype.Any // Pick a stle for the in-memory data.
+		nb := np.NewBuilder()         // Create a builder.
+		dagjson.Decode(nb, serial)    // Hand the builder to decoding -- decoding will fill it in!
+		apiResponse = nb.Build()      // Call 'Build' to get the resulting Node.  (It's immutable!)
+
 	}
 
 	return

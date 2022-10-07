@@ -15,6 +15,7 @@ import (
 )
 
 func TestCreateData(t *testing.T) {
+
 	np := basicnode.Prototype.Any // Pick a prototype: this is how we decide what implementation will store the in-memory data.
 	nb := np.NewBuilder()         // Create a builder.
 	ma, _ := nb.BeginMap(2)       // Begin assembling a map.
@@ -22,6 +23,7 @@ func TestCreateData(t *testing.T) {
 	ma.AssembleValue().AssignString("it works!")
 	ma.AssembleKey().AssignString("yes")
 	ma.AssembleValue().AssignBool(true)
+
 	ma.Finish()     // Call 'Finish' on the map assembly to let it know no more data is coming.
 	n := nb.Build() // Call 'Build' to get the resulting Node.  (It's immutable!)
 
@@ -77,7 +79,7 @@ func TestMarshel(t *testing.T) {
 
 }
 
-func TestUnmarshel(t *testing.T) {
+func TestUnmarshal(t *testing.T) {
 	serial := strings.NewReader(`{"hey":"it works!","yes": true}`)
 
 	np := basicnode.Prototype.Any // Pick a stle for the in-memory data.
@@ -90,7 +92,7 @@ func TestUnmarshel(t *testing.T) {
 
 }
 
-func TestUnmarshelWithSchema(t *testing.T) {
+func TestUnmarshalWithSchema(t *testing.T) {
 	typesys := schema.MustTypeSystem(
 		schema.SpawnStruct("Foobar",
 			[]schema.StructField{

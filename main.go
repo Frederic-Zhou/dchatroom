@@ -223,8 +223,10 @@ func infoAndHeartBitHandler(ctx context.Context, topic string) {
 			if err != nil {
 				continue
 			}
-			peersCount, ok := peers["Strings"].([]interface{})
-			view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d, ok?:%t", currentTopic, currentAKA, len(peersCount), ok))
+			// peersCount, ok := peers["Strings"].([]interface{})
+			peersList, err := peers.LookupByString("Strings")
+
+			view.SetInfoView(fmt.Sprintf("[black]Topic:%s, AKA:%s, Peers:%d, err: %v", currentTopic, currentAKA, peersList.Length(), err))
 
 			recs := secret.GetRecipients()
 
