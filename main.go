@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"dchatroom/ipfsapi"
+	"dchatroom/secret"
+	"dchatroom/view"
 	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"myd/ipfsapi"
-	"myd/secret"
-	"myd/view"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gen2brain/beeep"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/schema"
 )
 
 var currentTopic string = ""
@@ -139,15 +141,25 @@ func pubHandler(text string, toEncrypt bool) {
 		}
 	}
 
-	data, _ := json.Marshal(Data{
+	// data, _ := json.Marshal(Data{
+	// 	Text:      text,
+	// 	AKA:       currentAKA,
+	// 	PubKey:    secret.GetLocalPubKey(),
+	// 	Recipient: secret.GetLocalRecipient(),
+	// 	Encrypted: toEncrypt,
+	// })
+
+	node := bindnode.Wrap(&Data{
 		Text:      text,
 		AKA:       currentAKA,
 		PubKey:    secret.GetLocalPubKey(),
 		Recipient: secret.GetLocalRecipient(),
 		Encrypted: toEncrypt,
-	})
+	}, DataSchemaType)
+	// DataSchemaType 第一次是nil，之后就会被bindnode包装后自动生成的schema.Type赋值
+	DataSchemaType = node.Type()
 
-	_, err = ipfsapi.Pub(currentTopic, string(data))
+	_, err = ipfsapi.Pub(currentTopic, node.Representation())
 }
 
 func messageHandler(ctx context.Context, c chan []byte) {
@@ -234,6 +246,8 @@ func infoAndHeartBitHandler(ctx context.Context, topic string) {
 		}
 	}
 }
+
+var DataSchemaType schema.Type
 
 type Data struct {
 	Text      string `json:"text"`

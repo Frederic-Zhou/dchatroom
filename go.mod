@@ -1,4 +1,4 @@
-module myd
+module dchatroom
 
 go 1.18
 

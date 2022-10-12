@@ -3,8 +3,10 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagjson"
@@ -33,6 +35,44 @@ func TestCreateData(t *testing.T) {
 	dagjson.Encode(n, b)
 
 	fmt.Println(b.String())
+
+}
+
+func TestStruct(t *testing.T) {
+
+	type Data struct {
+		Text      string `json:"text"`
+		AKA       string `json:"aka"`
+		PubKey    string `json:"pubkey"`
+		Recipient string `json:"recipient"`
+		Encrypted bool   `json:"encrypted"`
+	}
+	go func() {
+
+		var st schema.Type
+
+		for {
+
+			node := bindnode.Wrap(&Data{
+				Text:      fmt.Sprintf("text%d", 0),
+				AKA:       "currentAKA",
+				PubKey:    "secret.GetLocalPubKey()",
+				Recipient: "secret.GetLocalRecipient()",
+				Encrypted: true,
+			}, st)
+
+			st = node.Type()
+
+			nodeRepr := node.Representation()
+			dagjson.Encode(nodeRepr, os.Stdout)
+
+			time.Sleep(1 * time.Second)
+
+		}
+
+	}()
+
+	select {}
 
 }
 

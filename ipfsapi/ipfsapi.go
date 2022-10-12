@@ -55,9 +55,15 @@ func Sub(ctx context.Context, topic string) (subChan chan []byte, err error) {
 	return
 }
 
-func Pub(topic string, content string) (pub ApiResponse, err error) {
+func Pub(topic string, node datamodel.Node) (pub ApiResponse, err error) {
 
 	topic = Base64urlEncode([]byte(topic))
+
+	b := bytes.NewBuffer([]byte{})
+	err = dagjson.Encode(node, b)
+	if err != nil {
+		return
+	}
 
 	args := url.Values{
 		"arg": []string{topic},
@@ -77,7 +83,7 @@ func Pub(topic string, content string) (pub ApiResponse, err error) {
 		return nil, err
 	}
 	// 写入文件数据到multipart，和读取本地文件方法的唯一区别
-	_, err = part.Write([]byte(content))
+	_, err = part.Write(b.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +126,17 @@ func SubPeers(topic string) (peers ApiResponse, err error) {
 	return
 }
 
-func DagPut(content string) (putResult ApiResponse, err error) {
+func DagPut(node datamodel.Node) (putResult ApiResponse, err error) {
 
 	// 实例化multipart
 	body := &bytes.Buffer{}
 	header := http.Header{}
+
+	b := bytes.NewBuffer([]byte{})
+	err = dagjson.Encode(node, b)
+	if err != nil {
+		return
+	}
 
 	//refer:https://blog.csdn.net/huobo123/article/details/104288030
 	//=========================================================
@@ -136,7 +148,7 @@ func DagPut(content string) (putResult ApiResponse, err error) {
 		return nil, err
 	}
 	// 写入文件数据到multipart，和读取本地文件方法的唯一区别
-	_, err = part.Write([]byte(content))
+	_, err = part.Write(b.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -209,10 +221,10 @@ ReadLoop:
 
 		serial := bytes.NewReader(respBody)
 
-		np := basicnode.Prototype.Any // Pick a stle for the in-memory data.
-		nb := np.NewBuilder()         // Create a builder.
-		dagjson.Decode(nb, serial)    // Hand the builder to decoding -- decoding will fill it in!
-		apiResponse = nb.Build()      // Call 'Build' to get the resulting Node.  (It's immutable!)
+		// np := basicnode.Prototype.Any              // Pick a stle for the in-memory data.
+		nb := basicnode.Prototype.Any.NewBuilder() // Create a builder.
+		dagjson.Decode(nb, serial)                 // Hand the builder to decoding -- decoding will fill it in!
+		apiResponse = nb.Build()                   // Call 'Build' to get the resulting Node.  (It's immutable!)
 
 	}
 
